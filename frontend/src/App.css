@@ -1,0 +1,96 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 40px;
+  text-align: center;
+}
+
+h1 {
+  font-size: 42px;
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.card,
+.results {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin: 20px 0 8px;
+  text-align: left;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+}
+
+textarea {
+  height: 160px;
+}
+
+button {
+  margin-top: 25px;
+  padding: 12px 25px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.score-box {
+  background: #eef2ff;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.score-box p {
+  font-size: 40px;
+  font-weight: bold;
+  margin: 10px;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  margin-top: 25px;
+}
+
+.skill-card {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.matched {
+  color: green;
+  font-weight: bold;
+}
+
+.missing {
+  color: red;
+  font-weight: bold;
+}
