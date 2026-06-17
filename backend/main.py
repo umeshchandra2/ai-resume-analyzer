@@ -5,109 +5,99 @@ import io
 
 app = FastAPI()
 
+# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173","https://ai-resume-analyzer-six-kappa.vercel.app",],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://ai-resume-analyzer-six-kappa.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def home():
     return {"message": "AI Resume Analyzer Backend Running"}
+
 
 @app.post("/analyze-resume")
 async def analyze_resume(
     file: UploadFile = File(...),
     job_description: str = Form(...)
 ):
-    pdf_content = await file.read()
-    pdf = PdfReader(io.BytesIO(pdf_content))
+    try:
+        pdf_bytes = await file.read()
 
-    text = ""
+        pdf_reader = PdfReader(io.BytesIO(pdf_bytes))
 
-    for page in pdf.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text
+        resume_text = ""
 
-    resume_text = text.lower()
-    jd_text = job_description.lower()
+        for page in pdf_reader.pages:
+            text = page.extract_text()
+            if text:
+                resume_text += text.lower()
 
-    skills = [
-        "python", "java", "sql", "mysql", "react", "javascript",
-        "html", "css", "machine learning", "git", "github",
-        "fastapi", "aws", "azure", "docker", "power bi",
-        "postgresql", "mongodb", "node.js", "express.js",
-        "rest api", "flask", "django"
-    ]
+        jd_text = job_description.lower()
 
-    resume_skills = []
-    job_skills = []
+        jd_words = set(jd_text.split())
+        resume_words = set(resume_text.split())
 
-    for skill in skills:
-        if skill in resume_text:
-            resume_skills.append(skill)
+        matched_skills = list(jd_words.intersection(resume_words))
+        missing_skills = list(jd_words.difference(resume_words))
 
-        if skill in jd_text:
-            job_skills.append(skill)
-
-    matched_skills = []
-    missing_skills = []
-
-    for skill in job_skills:
-        if skill in resume_skills:
-            matched_skills.append(skill)
-        else:
-            missing_skills.append(skill)
-
-    if len(job_skills) == 0:
         ats_score = 0
-    else:
-        ats_score = int((len(matched_skills) / len(job_skills)) * 100)
+        if len(jd_words) > 0:
+            ats_score = round(
+                (len(matched_skills) / len(jd_words)) * 100
+            )
 
-    if ats_score >= 80:
-        recommendation = "Excellent Match"
-    elif ats_score >= 60:
-        recommendation = "Good Match"
-    elif ats_score >= 40:
-        recommendation = "Average Match"
-    else:
-        recommendation = "Needs Improvement"
+        if ats_score >= 80:
+            recommendation = "Excellent Match"
+        elif ats_score >= 60:
+            recommendation = "Good Match"
+        elif ats_score >= 40:
+            recommendation = "Average Match"
+        else:
+            recommendation = "Needs Improvement"
 
-    suggestions = []
+        suggestions = []
 
-    for skill in missing_skills:
+        if ats_score < 80:
+            suggestions.append(
+                "Add more keywords from the job description."
+            )
+
+        if len(missing_skills) > 0:
+            suggestions.append(
+                "Include missing technical skills where applicable."
+            )
+
         suggestions.append(
-            f"Consider adding {skill} projects or experience to your resume."
+            "Quantify achievements with numbers and metrics."
         )
 
-    resume_strength = []
+        return {
+            "ats_score": ats_score,
+            "recommendation": recommendation,
+            "matched_skills": matched_skills[:20],
+            "missing_skills": missing_skills[:20],
+            "suggestions": suggestions,
+            "resume_strength": [
+                "Resume uploaded successfully",
+                "PDF parsed successfully",
+                "Keyword comparison completed"
+            ]
+        }
 
-    if len(resume_skills) >= 10:
-        resume_strength.append("Strong technical skill coverage")
-
-    if "python" in resume_skills:
-        resume_strength.append("Python experience detected")
-
-    if "sql" in resume_skills:
-        resume_strength.append("Database skills detected")
-
-    if "machine learning" in resume_skills:
-        resume_strength.append("Machine Learning background detected")
-
-    if "react" in resume_skills:
-        resume_strength.append("Frontend development experience detected")
-
-    return {
-        "filename": file.filename,
-        "resume_skills": resume_skills,
-        "job_skills_required": job_skills,
-        "matched_skills": matched_skills,
-        "missing_skills": missing_skills,
-        "ats_score": ats_score,
-        "recommendation": recommendation,
-        "suggestions": suggestions,
-        "resume_strength": resume_strength
-    }
+    except Exception as e:
+        return {
+            "ats_score": 0,
+            "recommendation": "Error",
+            "matched_skills": [],
+            "missing_skills": [],
+            "suggestions": [str(e)],
+            "resume_strength": []
+        }
