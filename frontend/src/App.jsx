@@ -5,6 +5,7 @@ function App() {
   const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
   const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const analyzeResume = async () => {
     if (!file) {
@@ -17,27 +18,48 @@ function App() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("job_description", jobDescription);
+    try {
+      setLoading(true);
 
-    const response = await fetch("https://ai-resume-analyzer-hwps.onrender.com/analyze-resume", {
-      method: "POST",
-      body: formData,
-    });
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("job_description", jobDescription);
 
-    const data = await response.json();
-    setResult(data);
+      const response = await fetch(
+        "https://ai-resume-analyzer-hwps.onrender.com/analyze-resume",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      console.log("API Response:", data);
+
+      setResult(data);
+    } catch (error) {
+      console.error(error);
+      alert("Error analyzing resume");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="container">
       <h1>AI Resume Analyzer</h1>
-      <p className="subtitle">Compare your resume with a job description</p>
+      <p className="subtitle">
+        Compare your resume with a job description
+      </p>
 
       <div className="card">
         <label>Upload Resume PDF</label>
-        <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+        <input
+          type="file"
+          accept=".pdf"
+          onChange={(e) => setFile(e.target.files[0])}
+        />
 
         <label>Paste Job Description</label>
         <textarea
@@ -46,7 +68,9 @@ function App() {
           placeholder="Paste job description here..."
         />
 
-        <button onClick={analyzeResume}>Analyze Resume</button>
+        <button onClick={analyzeResume} disabled={loading}>
+          {loading ? "Analyzing..." : "Analyze Resume"}
+        </button>
       </div>
 
       {result && (
@@ -55,43 +79,70 @@ function App() {
 
           <div className="score-box">
             <h3>ATS Score</h3>
-            <p>{result.ats_score}%</p>
-            <span>{result.recommendation}</span>
+            <p>{result.ats_score || 0}%</p>
+            <span>{result.recommendation || "No recommendation"}</span>
           </div>
 
           <div className="skills-grid">
             <div className="skill-card">
               <h3>Matched Skills</h3>
-              {result.matched_skills.map((skill) => (
-                <p className="matched" key={skill}>
-                  ✓ {skill}
-                </p>
-              ))}
+              {result.matched_skills?.length > 0 ? (
+                result.matched_skills.map((skill, index) => (
+                  <p className="matched" key={index}>
+                    ✓ {skill}
+                  </p>
+                ))
+              ) : (
+                <p>No matched skills found</p>
+              )}
             </div>
 
             <div className="skill-card">
               <h3>Missing Skills</h3>
-              {result.missing_skills.map((skill) => (
-                <p className="missing" key={skill}>
-                  ✗ {skill}
-                </p>
-              ))}
+              {result.missing_skills?.length > 0 ? (
+                result.missing_skills.map((skill, index) => (
+                  <p className="missing" key={index}>
+                    ✗ {skill}
+                  </p>
+                ))
+              ) : (
+                <p>No missing skills found</p>
+              )}
             </div>
 
             <div className="skill-card">
               <h3>Suggestions</h3>
-              {result.suggestions.map((item, index) => (
-                <p key={index}>💡 {item}</p>
-              ))}
+              {result.suggestions?.length > 0 ? (
+                result.suggestions.map((item, index) => (
+                  <p key={index}>💡 {item}</p>
+                ))
+              ) : (
+                <p>No suggestions available</p>
+              )}
             </div>
 
             <div className="skill-card">
               <h3>Resume Strengths</h3>
-              {result.resume_strength.map((item, index) => (
-                <p key={index}>✅ {item}</p>
-              ))}
+              {result.resume_strength?.length > 0 ? (
+                result.resume_strength.map((item, index) => (
+                  <p key={index}>✅ {item}</p>
+                ))
+              ) : (
+                <p>No strengths available</p>
+              )}
             </div>
           </div>
+
+          <pre
+            style={{
+              marginTop: "20px",
+              padding: "10px",
+              background: "#f4f4f4",
+              overflow: "auto",
+            }}
+          >
+            {JSON.stringify(result, null, 2)}
+          </pre>
         </div>
       )}
     </div>
