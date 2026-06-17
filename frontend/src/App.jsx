@@ -133,16 +133,7 @@ function App() {
             </div>
           </div>
 
-          <pre
-            style={{
-              marginTop: "20px",
-              padding: "10px",
-              background: "#f4f4f4",
-              overflow: "auto",
-            }}
-          >
-            {JSON.stringify(result, null, 2)}
-          </pre>
+
         </div>
       )}
     </div>
