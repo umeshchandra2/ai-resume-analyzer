@@ -1,11 +1,16 @@
+import os
+import io
+import json
+import google.generativeai as genai
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pypdf import PdfReader
-import io
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY_AI_RESUME"))
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 app = FastAPI()
 
-# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -30,67 +35,56 @@ async def analyze_resume(
 ):
     try:
         pdf_bytes = await file.read()
-
         pdf_reader = PdfReader(io.BytesIO(pdf_bytes))
 
         resume_text = ""
-
         for page in pdf_reader.pages:
             text = page.extract_text()
             if text:
-                resume_text += text.lower()
+                resume_text += text + "\n"
 
-        jd_text = job_description.lower()
+        prompt = f"""
+You are an ATS Resume Analyzer.
 
-        jd_words = set(jd_text.split())
-        resume_words = set(resume_text.split())
+Analyze the resume against the job description.
 
-        matched_skills = list(jd_words.intersection(resume_words))
-        missing_skills = list(jd_words.difference(resume_words))
+Resume:
+{resume_text}
 
-        ats_score = 0
-        if len(jd_words) > 0:
-            ats_score = round(
-                (len(matched_skills) / len(jd_words)) * 100
-            )
+Job Description:
+{job_description}
 
-        if ats_score >= 80:
-            recommendation = "Excellent Match"
-        elif ats_score >= 60:
-            recommendation = "Good Match"
-        elif ats_score >= 40:
-            recommendation = "Average Match"
-        else:
-            recommendation = "Needs Improvement"
+Return ONLY valid JSON in this exact format:
+{{
+  "ats_score": 0,
+  "recommendation": "",
+  "matched_skills": [],
+  "missing_skills": [],
+  "suggestions": [],
+  "resume_strength": []
+}}
 
-        suggestions = []
+Rules:
+- ats_score must be a number from 0 to 100.
+- matched_skills should include only real technical or business skills.
+- missing_skills should include only important missing skills from the job description.
+- suggestions should be clear resume improvement suggestions.
+- resume_strength should mention strong points from the resume.
+- Do not include common words like for, and, with, this, of.
+"""
 
-        if ats_score < 80:
-            suggestions.append(
-                "Add more keywords from the job description."
-            )
+        gemini_response = model.generate_content(prompt)
+        response_text = gemini_response.text.strip()
 
-        if len(missing_skills) > 0:
-            suggestions.append(
-                "Include missing technical skills where applicable."
-            )
-
-        suggestions.append(
-            "Quantify achievements with numbers and metrics."
+        response_text = (
+            response_text
+            .replace("```json", "")
+            .replace("```", "")
+            .strip()
         )
 
-        return {
-            "ats_score": ats_score,
-            "recommendation": recommendation,
-            "matched_skills": matched_skills[:20],
-            "missing_skills": missing_skills[:20],
-            "suggestions": suggestions,
-            "resume_strength": [
-                "Resume uploaded successfully",
-                "PDF parsed successfully",
-                "Keyword comparison completed"
-            ]
-        }
+        result = json.loads(response_text)
+        return result
 
     except Exception as e:
         return {
@@ -98,6 +92,6 @@ async def analyze_resume(
             "recommendation": "Error",
             "matched_skills": [],
             "missing_skills": [],
-            "suggestions": [str(e)],
+            "suggestions": [f"Error analyzing resume: {str(e)}"],
             "resume_strength": []
         }
